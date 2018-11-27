@@ -3,7 +3,7 @@ pragma solidity ^0.4.7;
 contract owned {
     address public owner;
 
-    function owned() {
+    function owned() public {
         owner = msg.sender;
     }
 
@@ -12,7 +12,7 @@ contract owned {
         _;
     }
 
-    function transferOwnership(address newOwner) onlyOwner {
+    function transferOwnership(address newOwner) public onlyOwner {
         owner = newOwner;
     }
 }
@@ -30,17 +30,17 @@ contract Database is owned {
     string _name;
     // @dev Additional information about the Handler, generally as a JSON object
     string _additionalInformation;
-    // @dev Products owned by the handler
-    address[] _products;
+    
+    address[] _ownerProducts;
   }
 
   // @dev Relates an address with a Handler record.
   mapping(address => Handler) public addressToHandler;
 
   /* @notice Constructor to create a Database */
-  function Database() {}
+  function Database() public {}
 
-  function () {
+  function () public {
     // If anyone wants to send Ether to this contract, the transaction gets rejected
     throw;
   }
@@ -50,20 +50,28 @@ contract Database is owned {
      @param _name The name of the Handler
      @param _additionalInformation Additional information about the Product,
             generally as a JSON object. */
-  function addHandler(address _address, string _name, string _additionalInformation, address[] _products) onlyOwner {
+  function addHandler(address _address, string _name, string _additionalInformation, address[] _ownerProducts) public onlyOwner {
     Handler memory handler;
     handler._name = _name;
     handler._additionalInformation = _additionalInformation;
-    handler._products = _products;
+    handler._ownerProducts = _ownerProducts;
 
     addressToHandler[_address] = handler;
   }
+  
+  function getHandler(address _address) view public returns(string,string,address[]){
+        return (addressToHandler[_address]._name,addressToHandler[_address]._additionalInformation,addressToHandler[_address]._ownerProducts);
+    }
 
   /* @notice Function to add a product reference
      @param productAddress address of the product */
-  function storeProductReference(address productAddress) {
+  function storeProductReference(address productAddress) public {
     products.push(productAddress);
   }
+  
+  function getAllProducts() view public returns(address[]) {
+        return products;
+    }
 
 }
 
@@ -80,12 +88,9 @@ contract Product {
     //@dev address of the individual or the organization who realizes the action.
     address handler;
     //@dev description of the action.
-    bytes32 description;
-
-    // @dev Longitude x10^10 where the Action is done.
-    int lon;
-    // @dev Latitude x10^10 where the Action is done.
-    int lat;
+    string description;
+    
+    address owner;
 
     // @dev Instant of time when the Action is done.
     uint timestamp;
@@ -101,7 +106,7 @@ contract Product {
   }
 
   // @dev addresses of the products which were used to build this Product.
-  address[] public ownerProducts;
+  //address[] public parentProducts;
   // @dev addresses of the products which are built by this Product.
   address[] public childProducts;
 
@@ -109,10 +114,10 @@ contract Product {
   bool public isConsumed;
 
   // @dev indicates the name of a product.
-  bytes32 public name;
+  string public name;
 
   // @dev Additional information about the Product, generally as a JSON object
-  bytes32 public additionalInformation;
+  string public additionalInformation;
 
   // @dev all the actions which have been applied to the Product.
   Action[] public actions;
@@ -126,14 +131,12 @@ contract Product {
      @param _additionalInformation Additional information about the Product,
             generally as a JSON object.
      @param _ownerProducts Addresses of the owner of the Product.
-     @param _lon Longitude x10^10 where the Product is created.
-     @param _lat Latitude x10^10 where the Product is created.
      @param _DATABASE_CONTRACT Reference to its database contract
      @param _PRODUCT_FACTORY Reference to its product factory */
-  function Product(bytes32 _name, bytes32 _additionalInformation, address[] _ownerProducts, int _lon, int _lat, address _DATABASE_CONTRACT, address _PRODUCT_FACTORY) {
+  function Product(string _name, string _additionalInformation, address _owner, address _DATABASE_CONTRACT, address _PRODUCT_FACTORY) public {
     name = _name;
     isConsumed = false;
-    ownerProducts = _ownerProducts;
+    //ownerProducts = _ownerProducts;
     additionalInformation = _additionalInformation;
 
     DATABASE_CONTRACT = _DATABASE_CONTRACT;
@@ -142,8 +145,7 @@ contract Product {
     Action memory creation;
     creation.handler = msg.sender;
     creation.description = "Product creation";
-    creation.lon = _lon;
-    creation.lat = _lat;
+    creation.owner = _owner;
     creation.timestamp = now;
     creation.blockNumber = block.number;
 
@@ -153,71 +155,63 @@ contract Product {
     database.storeProductReference(this);
   }
 
-  function () {
+  function () public {
     // If anyone wants to send Ether to this contract, the transaction gets rejected
     throw;
   }
 
   /* @notice Function to add an Action to the product.
      @param _description The description of the Action.
-     @param _lon Longitude x10^10 where the Action is done.
-     @param _lat Latitude x10^10 where the Action is done.
      @param _newProductNames In case that this Action creates more products from
             this Product, the names of the new products should be provided here.
      @param _newProductsAdditionalInformation In case that this Action creates more products from
             this Product, the additional information of the new products should be provided here.
      @param _consumed True if the product becomes consumed after the action. */
-  function addAction(bytes32 description, int lon, int lat, bytes32[] newProductsNames, bytes32[] newProductsAdditionalInformation, bool _consumed) notConsumed {
-    if (newProductsNames.length != newProductsAdditionalInformation.length) throw;
+//   function addAction(bytes32 description, bytes32[] newProductsNames, bytes32[] newProductsAdditionalInformation, bool _consumed) notConsumed {
+//     if (newProductsNames.length != newProductsAdditionalInformation.length) throw;
 
-    Action memory action;
-    action.handler = msg.sender;
-    action.description = description;
-    action.lon = lon;
-    action.lat = lat;
-    action.timestamp = now;
-    action.blockNumber = block.number;
+//     Action memory action;
+//     action.handler = msg.sender;
+//     action.description = description;
+//     action.timestamp = now;
+//     action.blockNumber = block.number;
 
-    actions.push(action);
+//     actions.push(action);
 
-    ProductFactory productFactory = ProductFactory(PRODUCT_FACTORY);
+//     ProductFactory productFactory = ProductFactory(PRODUCT_FACTORY);
 
-    for (uint i = 0; i < newProductsNames.length; ++i) {
-      address[] memory ownerProducts = new address[](1);
-      ownerProducts[0] = this;
-      productFactory.createProduct(newProductsNames[i], newProductsAdditionalInformation[i], ownerProducts, lon, lat, DATABASE_CONTRACT);
-    }
+//     for (uint i = 0; i < newProductsNames.length; ++i) {
+//       address[] memory ownerProducts = new address[](1);
+//       ownerProducts[0] = this;
+//       productFactory.createProduct(newProductsNames[i], newProductsAdditionalInformation[i], ownerProducts, DATABASE_CONTRACT);
+//     }
 
-    isConsumed = _consumed;
-  }
+//     isConsumed = _consumed;
+//   }
 
   /* @notice Function to merge some products to build a new one.
      @param otherProducts addresses of the other products to be merged.
      @param newProductsName Name of the new product resulting of the merge.
-     @param newProductAdditionalInformation Additional information of the new product resulting of the merge.
-     @param _lon Longitude x10^10 where the merge is done.
-     @param _lat Latitude x10^10 where the merge is done. */
-  function merge(address[] otherProducts, bytes32 newProductName, bytes32 newProductAdditionalInformation, int lon, int lat) notConsumed {
-    ProductFactory productFactory = ProductFactory(PRODUCT_FACTORY);
-    address newProduct = productFactory.createProduct(newProductName, newProductAdditionalInformation, otherProducts, lon, lat, DATABASE_CONTRACT);
+     @param newProductAdditionalInformation Additional information of the new product resulting of the merge.*/
+//   function merge(address[] otherProducts, bytes32 newProductName, bytes32 newProductAdditionalInformation) notConsumed {
+//     ProductFactory productFactory = ProductFactory(PRODUCT_FACTORY);
+//     address newProduct = productFactory.createProduct(newProductName, newProductAdditionalInformation, otherProducts, DATABASE_CONTRACT);
 
-    this.collaborateInMerge(newProduct, lon, lat);
-    for (uint i = 0; i < otherProducts.length; ++i) {
-      Product prod = Product(otherProducts[i]);
-      prod.collaborateInMerge(newProduct, lon, lat);
-    }
-  }
+//     this.collaborateInMerge(newProduct);
+//     for (uint i = 0; i < otherProducts.length; ++i) {
+//       Product prod = Product(otherProducts[i]);
+//       prod.collaborateInMerge(newProduct);
+//     }
+//   }
 
   /* @notice Function to collaborate in a merge with some products to build a new one.
      @param newProductsAddress Address of the new product resulting of the merge. */
-  function collaborateInMerge(address newProductAddress, int lon, int lat) notConsumed {
+  function collaborateInMerge(address newProductAddress) public notConsumed {
     childProducts.push(newProductAddress);
 
     Action memory action;
     action.handler = this;
     action.description = "Collaborate in merge";
-    action.lon = lon;
-    action.lat = lat;
     action.timestamp = now;
     action.blockNumber = block.number;
 
@@ -227,7 +221,7 @@ contract Product {
   }
 
   /* @notice Function to consume the Product */
-  function consume() notConsumed {
+  function consume() public notConsumed {
     isConsumed = true;
   }
 }
@@ -242,9 +236,9 @@ contract ProductFactory {
     /////////////////
 
     /* @notice Constructor to create a Product Factory */
-    function ProductFactory() {}
+    function ProductFactory() public {}
 
-    function () {
+    function () public {
       // If anyone wants to send Ether to this contract, the transaction gets rejected
       throw;
     }
@@ -254,10 +248,8 @@ contract ProductFactory {
        @param _additionalInformation Additional information about the Product,
               generally as a JSON object.
        @param _ownerProducts Addresses of the owner of the Product.
-       @param _lon Longitude x10^10 where the Product is created.
-       @param _lat Latitude x10^10 where the Product is created.
        @param _DATABASE_CONTRACT Reference to its database contract */
-    function createProduct(bytes32 _name, bytes32 _additionalInformation, address[] _ownerProducts, int _lon, int _lat, address DATABASE_CONTRACT) returns(address) {
-      return new Product(_name, _additionalInformation, _ownerProducts, _lon, _lat, DATABASE_CONTRACT, this);
+    function createProduct(string _name, string _additionalInformation, address _owner, address DATABASE_CONTRACT) public returns(address) {
+      return new Product(_name, _additionalInformation, _owner, DATABASE_CONTRACT, this);
     }
 }
