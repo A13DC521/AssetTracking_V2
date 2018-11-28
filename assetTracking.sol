@@ -1,6 +1,7 @@
 pragma solidity ^0.4.7;
 
 contract owned {
+    
     address public owner;
 
     function owned() public {
@@ -17,27 +18,25 @@ contract owned {
     }
 }
 
-/* @dev This contract represents the database to store all handlers and products of the
-   TODO put name of platform ** platform.  */
-
 contract Database is owned {
-  // @dev addresses of the Products referenced in this database
+    
+  // addresses of the Products referenced in this database
   address[] public products;
 
-  // @dev struct which represents a Handler for the products stored in the database.
+  // struct which represents a Handler for the products stored in the database.
   struct Handler {
-    // @dev indicates the name of a Handler.
+    // indicates the name of a Handler.
     string _name;
-    // @dev Additional information about the Handler, generally as a JSON object
+    // Additional information about the Handler, generally as a JSON object
     string _additionalInformation;
-    
+    // Addresses of products owned by Handler
     address[] _ownerProducts;
   }
 
-  // @dev Relates an address with a Handler record.
+  // Relates an address with a Handler record.
   mapping(address => Handler) public addressToHandler;
 
-  /* @notice Constructor to create a Database */
+
   function Database() public {}
 
   function () public {
@@ -45,11 +44,10 @@ contract Database is owned {
     throw;
   }
 
-  /* @notice Function to add a Handler reference
-     @param _address address of the handler
-     @param _name The name of the Handler
-     @param _additionalInformation Additional information about the Product,
-            generally as a JSON object. */
+  /* Function to add a Handler reference
+     _address address of the handler
+     _name The name of the Handler
+     _additionalInformation Additional information about the Product */
   function addHandler(address _address, string _name, string _additionalInformation, address[] _ownerProducts) public onlyOwner {
     Handler memory handler;
     handler._name = _name;
@@ -63,8 +61,8 @@ contract Database is owned {
         return (addressToHandler[_address]._name,addressToHandler[_address]._additionalInformation,addressToHandler[_address]._ownerProducts);
     }
 
-  /* @notice Function to add a product reference
-     @param productAddress address of the product */
+  /* Function to add a product reference
+     productAddress address of the product */
   function storeProductReference(address productAddress) public {
     products.push(productAddress);
   }
@@ -76,71 +74,64 @@ contract Database is owned {
 }
 
 
- /* @dev Constructor for a Product */
 contract Product {
-  // @dev Reference to its database contract.
+  // Reference to its database contract.
   address public DATABASE_CONTRACT;
-  // @dev Reference to its product factory.
-  address public PRODUCT_FACTORY;
+  // Reference to its product category.
+  address public PRODUCT_CATEGORY;
 
-  // @dev This struct represents an action realized by a handler on the product.
+  // This struct represents an action realized by a handler on the product.
   struct Action {
-    //@dev address of the individual or the organization who realizes the action.
+    // address of the individual or the organization who realizes the action.
     address handler;
-    //@dev description of the action.
+    // description of the action.
     string description;
-    
+    // address of the product's owner
     address owner;
-
-    // @dev Instant of time when the Action is done.
+    // Instant of time when the Action is done.
     uint timestamp;
-    // @dev Block when the Action is done.
+    // Block when the Action is done.
     uint blockNumber;
   }
 
-  // @dev if the Product is consumed the transaction can't be done.
+  // if the Product is consumed the transaction can't be done.
   modifier notConsumed {
     if (isConsumed)
       throw;
     _;
   }
 
-  // @dev addresses of the products which were used to build this Product.
-  //address[] public parentProducts;
-  // @dev addresses of the products which are built by this Product.
+  // addresses of the products which are built by this Product.
   address[] public childProducts;
 
-  // @dev indicates if a product has been consumed or not.
+  // indicates if a product has been consumed or not.
   bool public isConsumed;
 
-  // @dev indicates the name of a product.
+  // indicates the name of a product.
   string public name;
 
-  // @dev Additional information about the Product, generally as a JSON object
+  // Additional information about the Product, generally as a JSON object
   string public additionalInformation;
 
-  // @dev all the actions which have been applied to the Product.
+  // all the actions which have been applied to the Product.
   Action[] public actions;
 
     /////////////////
    // Constructor //
   /////////////////
 
-  /* @notice Constructor to create a Product
-     @param _name The name of the Product
-     @param _additionalInformation Additional information about the Product,
-            generally as a JSON object.
-     @param _ownerProducts Addresses of the owner of the Product.
-     @param _DATABASE_CONTRACT Reference to its database contract
-     @param _PRODUCT_FACTORY Reference to its product factory */
-  function Product(string _name, string _additionalInformation, address _owner, address _DATABASE_CONTRACT, address _PRODUCT_FACTORY) public {
+  /* _name The name of the Product
+     _additionalInformation Additional information about the Product
+     _ownerProducts Addresses of the owner of the Product.
+     _DATABASE_CONTRACT Reference to its database contract
+     _PRODUCT_CATEGORY Reference to its product factory */
+  function Product(string _name, string _additionalInformation, address _owner, address _DATABASE_CONTRACT, address _PRODUCT_CATEGORY) public {
     name = _name;
     isConsumed = false;
-    //ownerProducts = _ownerProducts;
     additionalInformation = _additionalInformation;
 
     DATABASE_CONTRACT = _DATABASE_CONTRACT;
-    PRODUCT_FACTORY = _PRODUCT_FACTORY;
+    PRODUCT_CATEGORY = _PRODUCT_CATEGORY;
 
     Action memory creation;
     creation.handler = msg.sender;
@@ -160,13 +151,13 @@ contract Product {
     throw;
   }
 
-  /* @notice Function to add an Action to the product.
-     @param _description The description of the Action.
-     @param _newProductNames In case that this Action creates more products from
+  /* Function to add an Action to the product.
+     _description The description of the Action.
+     _newProductNames In case that this Action creates more products from
             this Product, the names of the new products should be provided here.
-     @param _newProductsAdditionalInformation In case that this Action creates more products from
+     _newProductsAdditionalInformation In case that this Action creates more products from
             this Product, the additional information of the new products should be provided here.
-     @param _consumed True if the product becomes consumed after the action. */
+     _consumed True if the product becomes consumed after the action. */
 //   function addAction(bytes32 description, bytes32[] newProductsNames, bytes32[] newProductsAdditionalInformation, bool _consumed) notConsumed {
 //     if (newProductsNames.length != newProductsAdditionalInformation.length) throw;
 
@@ -178,7 +169,7 @@ contract Product {
 
 //     actions.push(action);
 
-//     ProductFactory productFactory = ProductFactory(PRODUCT_FACTORY);
+//     ProductFactory productFactory = ProductFactory(PRODUCT_CATEGORY);
 
 //     for (uint i = 0; i < newProductsNames.length; ++i) {
 //       address[] memory ownerProducts = new address[](1);
@@ -189,12 +180,12 @@ contract Product {
 //     isConsumed = _consumed;
 //   }
 
-  /* @notice Function to merge some products to build a new one.
-     @param otherProducts addresses of the other products to be merged.
-     @param newProductsName Name of the new product resulting of the merge.
-     @param newProductAdditionalInformation Additional information of the new product resulting of the merge.*/
+  /* Function to merge some products to build a new one.
+     otherProducts addresses of the other products to be merged.
+     newProductsName Name of the new product resulting of the merge.
+     newProductAdditionalInformation Additional information of the new product resulting of the merge.*/
 //   function merge(address[] otherProducts, bytes32 newProductName, bytes32 newProductAdditionalInformation) notConsumed {
-//     ProductFactory productFactory = ProductFactory(PRODUCT_FACTORY);
+//     ProductFactory productFactory = ProductFactory(PRODUCT_CATEGORY);
 //     address newProduct = productFactory.createProduct(newProductName, newProductAdditionalInformation, otherProducts, DATABASE_CONTRACT);
 
 //     this.collaborateInMerge(newProduct);
@@ -204,8 +195,8 @@ contract Product {
 //     }
 //   }
 
-  /* @notice Function to collaborate in a merge with some products to build a new one.
-     @param newProductsAddress Address of the new product resulting of the merge. */
+  /* Function to collaborate in a merge with some products to build a new one.
+     newProductsAddress Address of the new product resulting of the merge. */
   function collaborateInMerge(address newProductAddress) public notConsumed {
     childProducts.push(newProductAddress);
 
@@ -220,22 +211,19 @@ contract Product {
     this.consume();
   }
 
-  /* @notice Function to consume the Product */
+  /* Function to consume the Product */
   function consume() public notConsumed {
     isConsumed = true;
   }
 }
 
-/* @dev This contract represents a product factory which represents products to be tracked in
-   the TODO put name of platform ** platform. This product lets the handlers to register actions
-   on it or even combine it with other products. */
+
 contract ProductFactory {
 
       /////////////////
      // Constructor //
     /////////////////
 
-    /* @notice Constructor to create a Product Factory */
     function ProductFactory() public {}
 
     function () public {
@@ -243,12 +231,11 @@ contract ProductFactory {
       throw;
     }
 
-    /* @notice Function to create a Product
-       @param _name The name of the Product
-       @param _additionalInformation Additional information about the Product,
-              generally as a JSON object.
-       @param _ownerProducts Addresses of the owner of the Product.
-       @param _DATABASE_CONTRACT Reference to its database contract */
+    /* Function to create a Product
+       _name The name of the Product
+       _additionalInformation Additional information about the Product
+       _ownerProducts Addresses of the owner of the Product.
+       _DATABASE_CONTRACT Reference to its database contract */
     function createProduct(string _name, string _additionalInformation, address _owner, address DATABASE_CONTRACT) public returns(address) {
       return new Product(_name, _additionalInformation, _owner, DATABASE_CONTRACT, this);
     }
